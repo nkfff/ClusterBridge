@@ -175,7 +175,7 @@ async def transfer_many(
             except Exception as exc:
                 async with lock:
                     failed += 1
-                    errors.append(str(exc))
+                    errors.append(f"{type(exc).__name__}: {exc}")
                 return
             async with lock:
                 completed += 1

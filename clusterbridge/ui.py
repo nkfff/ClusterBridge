@@ -3,7 +3,7 @@ import sys
 import uuid
 from pathlib import Path
 
-from PySide6.QtCore import QObject, QThread, QUrl, Signal
+from PySide6.QtCore import QObject, QThread, QUrl, Signal, Slot
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QApplication, QComboBox, QDialog, QDialogButtonBox, QFormLayout, QLabel,
@@ -187,9 +187,12 @@ class TransferWorker(QObject):
             result = asyncio.run(
                 transfer_many(self.requests, self.profiles, progress)
             )
+            error_text = ""
+            if result.errors:
+                error_text = " Errors: " + " | ".join(result.errors)
             self.completed.emit(
                 f"Completed {result.completed} tasks; {result.failed} failed; "
-                f"resumed {result.resumed_from:,} bytes"
+                f"resumed {result.resumed_from:,} bytes.{error_text}"
             )
         except Exception as exc:
             self.failed.emit(str(exc))
@@ -300,16 +303,17 @@ class MainWindow(QMainWindow):
         self.worker = TransferWorker(self.requests, self.profiles)
         self.worker.moveToThread(self.thread)
         self.thread.started.connect(self.worker.run)
-        self.worker.progress.connect(
-            lambda current, total: self.progress.setValue(
-                int(current * 100 / total) if total else 0
-            )
-        )
+        self.worker.progress.connect(self.update_progress)
         self.worker.completed.connect(self.finish_transfer)
         self.worker.failed.connect(self.fail_transfer)
         self.thread.start()
         self.status.setText("Transferring...")
         self.requests = []
+
+    @Slot(int, int)
+    def update_progress(self, current: int, total: int) -> None:
+        if total:
+            self.progress.setValue(min(100, int(current * 100 / total)))
 
     def finish_transfer(self, message: str) -> None:
         self.status.setText(message)
