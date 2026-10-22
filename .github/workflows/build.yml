@@ -30,9 +30,27 @@ jobs:
           python-version: "3.12"
       - name: Install packaging dependencies
         run: python -m pip install -e ".[packaging]"
-      - name: Build application bundle
+      - name: Build macOS application bundle
+        if: runner.os == 'macOS'
         run: >
           pyinstaller --noconfirm --clean --windowed --name ClusterBridge
+          --icon assets/clusterbridge.icns
+          --collect-all asyncssh
+          --collect-all cryptography
+          clusterbridge/launcher.py
+      - name: Build Windows application bundle
+        if: runner.os == 'Windows'
+        run: >
+          pyinstaller --noconfirm --clean --windowed --name ClusterBridge
+          --icon assets/clusterbridge.ico
+          --collect-all asyncssh
+          --collect-all cryptography
+          clusterbridge/launcher.py
+      - name: Build Linux application bundle
+        if: runner.os == 'Linux'
+        run: >
+          pyinstaller --noconfirm --clean --windowed --name ClusterBridge
+          --icon assets/clusterbridge.png
           --collect-all asyncssh
           --collect-all cryptography
           clusterbridge/launcher.py
