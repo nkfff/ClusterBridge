@@ -12,6 +12,45 @@ All timestamps use `Asia/Shanghai` (`UTC+08:00`) and are recorded to the second.
 | [V1.0.0](https://github.com/nkfff/ClusterBridge/releases/tag/v1.0.0) | 2026-10-22 16:35:53 +08:00 | Cross-platform packaging workflow, concurrent resumable transfer queue, and release automation |
 | [V0.1.0](https://github.com/nkfff/ClusterBridge/releases/tag/v0.1.0) | 2026-10-22 16:31:42 +08:00 | Initial PySide6 desktop MVP and single-file SSH streaming |
 
+## Version update notes
+
+### V1.0.1 — Fixed standalone release
+
+Released at `2026-10-22 17:10:50 +08:00`.
+
+- Fixed the packaged-app startup failure caused by a relative import in the PyInstaller launcher.
+- Added a startup bootstrap that records uncaught startup errors in `~/.clusterbridge/logs/startup.log`.
+- Added a fallback error dialog for packaged environments where no terminal is visible.
+- Added delayed loading of the transfer module so UI startup is less sensitive to optional runtime import failures.
+- Updated PyInstaller collection rules for AsyncSSH and cryptography.
+- Rebuilt and published macOS, Windows, and Linux standalone bundles.
+- Published the detailed [`tutorial.html`](https://github.com/nkfff/ClusterBridge/releases/download/v1.0.1/tutorial.html) guide.
+
+### V1.0.0 — Cross-platform desktop release
+
+Released at `2026-10-22 16:35:53 +08:00`.
+
+- Added a bounded-concurrency task queue for multiple independent transfers.
+- Added per-task resume behavior based on the existing destination file size.
+- Added failure isolation so completed tasks are not restarted when another task fails.
+- Added relative remote path joining for rsync-like `--relative` behavior through the local relay.
+- Added GitHub Actions builds for native macOS, Windows, and Linux runners.
+- Added PyInstaller packaging for standalone desktop bundles.
+- Added the first V1 release assets and release automation.
+
+### V0.1.0 — Initial desktop MVP
+
+Released at `2026-10-22 16:31:42 +08:00`.
+
+- Added the PySide6 desktop application shell.
+- Added local-memory streaming between local files and SSH/SFTP endpoints.
+- Added SQLite storage for SSH connection metadata.
+- Added operating-system keychain storage for passwords through `keyring`.
+- Added bounded 4 MiB transfer buffers.
+- Added basic destination-size resume behavior for interrupted single-file transfers.
+- Added progress reporting, validation, and explicit transfer errors.
+- Added an English README and initial cross-platform project structure.
+
 ## About
 
 - Product name: ClusterBridge
