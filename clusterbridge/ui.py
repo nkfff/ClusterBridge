@@ -29,7 +29,8 @@ class TransferWorker(QObject):
         try:
             result = asyncio.run(transfer_file(self.request, self.profiles, progress))
             self.completed.emit(
-                f"完成：{result.bytes_transferred:,} bytes，续传 {result.resumed_from:,} bytes"
+                f"Completed: {result.bytes_transferred:,} bytes; "
+                f"resumed {result.resumed_from:,} bytes"
             )
         except Exception as exc:
             self.failed.emit(str(exc))
@@ -38,7 +39,7 @@ class TransferWorker(QObject):
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("ClusterBridge - 本地中转")
+        self.setWindowTitle("ClusterBridge - Local Relay")
         self.resize(620, 300)
         self.store = ProfileStore()
         self.profiles = {p.id: p for p in self.store.list_profiles()}
@@ -48,21 +49,21 @@ class MainWindow(QMainWindow):
         source_combo = QComboBox()
         destination_combo = QComboBox()
         for combo in (source_combo, destination_combo):
-            combo.addItem("本地电脑", "")
+            combo.addItem("This computer", "")
             for profile in self.profiles.values():
                 combo.addItem(profile.name, profile.id)
         self.source_combo, self.destination_combo = source_combo, destination_combo
         self.source_path, self.destination_path = source_path, destination_path
 
         form = QFormLayout()
-        form.addRow("传输来源", source_combo)
-        form.addRow("源文件路径", source_path)
-        form.addRow("传输目标", destination_combo)
-        form.addRow("目标文件路径", destination_path)
+        form.addRow("Source", source_combo)
+        form.addRow("Source path", source_path)
+        form.addRow("Destination", destination_combo)
+        form.addRow("Destination path", destination_path)
 
-        self.status = QLabel("数据只经过本机内存，不会自动保存完整文件。")
+        self.status = QLabel("Data is relayed through memory and is not stored as a complete local file.")
         self.progress = QProgressBar()
-        start = QPushButton("开始传输")
+        start = QPushButton("Start transfer")
         start.clicked.connect(self.start_transfer)
         layout = QVBoxLayout()
         layout.addLayout(form)
@@ -85,7 +86,7 @@ class MainWindow(QMainWindow):
             )
             request.validate()
         except ValueError as exc:
-            QMessageBox.warning(self, "输入有误", str(exc))
+            QMessageBox.warning(self, "Invalid input", str(exc))
             return
         self.thread = QThread()
         self.worker = TransferWorker(request, self.profiles)
@@ -99,15 +100,15 @@ class MainWindow(QMainWindow):
         self.worker.completed.connect(self.finish_transfer)
         self.worker.failed.connect(self.fail_transfer)
         self.thread.start()
-        self.status.setText("传输中...")
+        self.status.setText("Transferring...")
 
     def finish_transfer(self, message: str) -> None:
         self.status.setText(message)
         self.thread.quit()
 
     def fail_transfer(self, message: str) -> None:
-        self.status.setText("传输失败")
-        QMessageBox.critical(self, "传输失败", message)
+        self.status.setText("Transfer failed")
+        QMessageBox.critical(self, "Transfer failed", message)
         self.thread.quit()
 
     def closeEvent(self, event) -> None:  # noqa: N802
