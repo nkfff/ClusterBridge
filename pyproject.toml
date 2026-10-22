@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "clusterbridge"
+version = "0.1.0"
+description = "Stream SSH data between clusters through a local computer"
+requires-python = ">=3.11"
+dependencies = [
+    "asyncssh>=2.14,<3",
+    "keyring>=25,<26",
+    "PySide6>=6.7,<7",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<9"]
+
+[project.scripts]
+clusterbridge = "clusterbridge.__main__:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
