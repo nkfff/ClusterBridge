@@ -8,7 +8,7 @@ All timestamps use `Asia/Shanghai` (`UTC+08:00`) and are recorded to the second.
 
 | Version | Released at | Highlights |
 |---|---|---|
-| [V1.0.1](https://github.com/nkfff/ClusterBridge/releases/tag/v1.0.1) | 2026-10-22 16:38:35 +08:00 | Desktop task queue wired to concurrent resumable transfers |
+| [V1.0.1](https://github.com/nkfff/ClusterBridge/releases/tag/v1.0.1) | 2026-10-22 17:10:50 +08:00 | Fixed standalone app startup, startup diagnostics, and replacement platform bundles |
 | [V1.0.0](https://github.com/nkfff/ClusterBridge/releases/tag/v1.0.0) | 2026-10-22 16:35:53 +08:00 | Cross-platform packaging workflow, concurrent resumable transfer queue, and release automation |
 | [V0.1.0](https://github.com/nkfff/ClusterBridge/releases/tag/v0.1.0) | 2026-10-22 16:31:42 +08:00 | Initial PySide6 desktop MVP and single-file SSH streaming |
 
@@ -16,9 +16,10 @@ All timestamps use `Asia/Shanghai` (`UTC+08:00`) and are recorded to the second.
 
 - Product name: ClusterBridge
 - Current app version: `1.0.1`
-- Last updated: `2026-10-22 16:51:55 +08:00`
+- Last updated: `2026-10-22 17:35:20 +08:00`
 - Maintainer repository: `nkfff/ClusterBridge`
 - Releases page: <https://github.com/nkfff/ClusterBridge/releases>
+- Current fixed release assets: macOS, Windows, Linux, and [`tutorial.html`](https://github.com/nkfff/ClusterBridge/releases/download/v1.0.1/tutorial.html)
 - Core design: stream data through local memory with bounded buffers, no full-file local staging
 
 ## MVP scope
