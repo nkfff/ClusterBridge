@@ -4,12 +4,13 @@ import sys
 from PySide6.QtCore import QObject, QThread, Signal
 from PySide6.QtWidgets import (
     QApplication, QComboBox, QFormLayout, QLabel, QLineEdit,
-    QMainWindow, QMessageBox, QPushButton, QProgressBar, QVBoxLayout, QWidget,
+    QListWidget, QMainWindow, QMessageBox, QPushButton, QProgressBar,
+    QVBoxLayout, QWidget,
 )
 
 from .models import Endpoint, EndpointKind, TransferRequest
 from .storage import ProfileStore
-from .transfer import transfer_file
+from .transfer import transfer_many
 
 
 class TransferWorker(QObject):
@@ -17,9 +18,9 @@ class TransferWorker(QObject):
     completed = Signal(str)
     failed = Signal(str)
 
-    def __init__(self, request: TransferRequest, profiles: dict) -> None:
+    def __init__(self, requests: list[TransferRequest], profiles: dict) -> None:
         super().__init__()
-        self.request = request
+        self.requests = requests
         self.profiles = profiles
 
     def run(self) -> None:
@@ -27,9 +28,11 @@ class TransferWorker(QObject):
             self.progress.emit(current, total)
 
         try:
-            result = asyncio.run(transfer_file(self.request, self.profiles, progress))
+            result = asyncio.run(
+                transfer_many(self.requests, self.profiles, progress)
+            )
             self.completed.emit(
-                f"Completed: {result.bytes_transferred:,} bytes; "
+                f"Completed {result.completed} tasks; {result.failed} failed; "
                 f"resumed {result.resumed_from:,} bytes"
             )
         except Exception as exc:
@@ -54,6 +57,7 @@ class MainWindow(QMainWindow):
                 combo.addItem(profile.name, profile.id)
         self.source_combo, self.destination_combo = source_combo, destination_combo
         self.source_path, self.destination_path = source_path, destination_path
+        self.requests = []
 
         form = QFormLayout()
         form.addRow("Source", source_combo)
@@ -63,10 +67,15 @@ class MainWindow(QMainWindow):
 
         self.status = QLabel("Data is relayed through memory and is not stored as a complete local file.")
         self.progress = QProgressBar()
-        start = QPushButton("Start transfer")
+        self.task_list = QListWidget()
+        add_task = QPushButton("Add task")
+        add_task.clicked.connect(self.add_task)
+        start = QPushButton("Start queued tasks")
         start.clicked.connect(self.start_transfer)
         layout = QVBoxLayout()
         layout.addLayout(form)
+        layout.addWidget(add_task)
+        layout.addWidget(self.task_list)
         layout.addWidget(self.status)
         layout.addWidget(self.progress)
         layout.addWidget(start)
@@ -74,22 +83,35 @@ class MainWindow(QMainWindow):
         container.setLayout(layout)
         self.setCentralWidget(container)
 
-    def start_transfer(self) -> None:
+    def _build_request(self) -> TransferRequest:
         source_id = self.source_combo.currentData()
         destination_id = self.destination_combo.currentData()
         source_kind = EndpointKind.SSH if source_id else EndpointKind.LOCAL
         destination_kind = EndpointKind.SSH if destination_id else EndpointKind.LOCAL
+        request = TransferRequest(
+            Endpoint(source_kind, self.source_path.text(), source_id or None),
+            Endpoint(destination_kind, self.destination_path.text(), destination_id or None),
+        )
+        request.validate()
+        return request
+
+    def add_task(self) -> None:
         try:
-            request = TransferRequest(
-                Endpoint(source_kind, self.source_path.text(), source_id or None),
-                Endpoint(destination_kind, self.destination_path.text(), destination_id or None),
-            )
-            request.validate()
+            request = self._build_request()
         except ValueError as exc:
             QMessageBox.warning(self, "Invalid input", str(exc))
             return
+        self.requests.append(request)
+        self.task_list.addItem(f"{request.source.path} -> {request.destination.path}")
+        self.status.setText(f"{len(self.requests)} task(s) queued")
+
+    def start_transfer(self) -> None:
+        if not self.requests:
+            self.add_task()
+        if not self.requests:
+            return
         self.thread = QThread()
-        self.worker = TransferWorker(request, self.profiles)
+        self.worker = TransferWorker(self.requests, self.profiles)
         self.worker.moveToThread(self.thread)
         self.thread.started.connect(self.worker.run)
         self.worker.progress.connect(
@@ -101,6 +123,7 @@ class MainWindow(QMainWindow):
         self.worker.failed.connect(self.fail_transfer)
         self.thread.start()
         self.status.setText("Transferring...")
+        self.requests = []
 
     def finish_transfer(self, message: str) -> None:
         self.status.setText(message)

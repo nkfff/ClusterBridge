@@ -8,6 +8,7 @@ All timestamps use `Asia/Shanghai` (`UTC+08:00`) and are recorded to the second.
 
 | Version | Released at | Highlights |
 |---|---|---|
+| [V1.0.1](https://github.com/nkfff/ClusterBridge/releases/tag/v1.0.1) | 2026-10-22 16:35:00 +08:00 | Desktop task queue wired to concurrent resumable transfers |
 | [V1.0.0](https://github.com/nkfff/ClusterBridge/releases/tag/v1.0.0) | 2026-10-22 16:35:00 +08:00 | Cross-platform packaging workflow, concurrent resumable transfer queue, and release automation |
 | [V0.1.0](https://github.com/nkfff/ClusterBridge/releases/tag/v0.1.0) | 2026-10-22 16:31:04 +08:00 | Initial PySide6 desktop MVP and single-file SSH streaming |
 
