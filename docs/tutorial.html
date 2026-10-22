@@ -15,7 +15,7 @@
 </head>
 <body>
   <h1>ClusterBridge Detailed Tutorial (V1.0.1)</h1>
-  <p><strong>Last updated:</strong> 2026-10-22 16:51:55 +08:00</p>
+  <p><strong>Last updated:</strong> 2026-10-22 18:19:38 +08:00</p>
 
   <h2>1) What ClusterBridge does</h2>
   <p>
@@ -66,14 +66,44 @@ python -m clusterbridge</code></pre>
     If one task fails, completed tasks remain completed.
   </p>
 
-  <h2>6) Resume behavior and safe retry</h2>
+  <h2>6) Path rules: file versus directory</h2>
+  <div class="warn">
+    V1.0.1 transfers one file per task. It does not yet recursively transfer a directory.
+  </div>
+  <p>For a remote-to-local file transfer, use a complete file path on both sides:</p>
+  <pre><code>Source profile:      Lab Cluster A
+Source path:         /data/users/alice/sc_data/student.png
+Destination:         This computer
+Destination path:    /Users/alice/Downloads/student.png</code></pre>
+  <ul>
+    <li>Do not use a directory as the destination file path, such as <code>/Users/alice/Downloads</code>.</li>
+    <li>Do not select a source directory and expect recursive copying yet.</li>
+    <li>The destination parent directory must already exist or be creatable by the app.</li>
+  </ul>
+
+  <h2>7) Remote path rules</h2>
+  <p>
+    SFTP does not invoke a remote shell, so <code>~</code> is not expanded automatically.
+    Use the absolute path returned by <code>echo "$HOME"</code> on the cluster.
+  </p>
+  <pre><code># Run on the cluster
+echo "$HOME"
+
+# Example
+/home/alice/project/sample.h5ad</code></pre>
+  <p>
+    If the cluster uses a shared storage home, use that absolute path instead,
+    for example <code>/jinxianstor/jupyter/users/alice/project/sample.h5ad</code>.
+  </p>
+
+  <h2>8) Resume behavior and safe retry</h2>
   <ul>
     <li>If destination file already exists and is smaller than source, transfer resumes from destination size.</li>
     <li>You can rerun failed tasks by re-adding them and starting the queue again.</li>
     <li>Do not modify source files during active transfers.</li>
   </ul>
 
-  <h2>7) Typical scenarios</h2>
+  <h2>9) Typical scenarios</h2>
   <h3>A. Cluster A → Cluster B</h3>
   <ul>
     <li>Source = profile <code>cluster-a</code></li>
@@ -93,22 +123,39 @@ python -m clusterbridge</code></pre>
     <li>Destination = <code>This computer</code></li>
   </ul>
 
-  <h2>8) Troubleshooting</h2>
+  <h2>10) Troubleshooting transfer failures</h2>
   <ul>
     <li><strong>Auth failed:</strong> verify username/password in keychain and cluster SSH policy.</li>
     <li><strong>Path not found:</strong> verify source path and destination parent directory permissions.</li>
+    <li><strong>Is a directory:</strong> replace the destination directory with a complete destination filename.</li>
+    <li><strong>Source directory:</strong> select one file for the current V1.0.1 implementation.</li>
+    <li><strong>Remote path with <code>~</code>:</strong> replace it with the cluster user's absolute home path.</li>
+    <li><strong>Task failed count:</strong> the status now includes the exception type and message for each failed task.</li>
     <li><strong>Very slow transfer:</strong> your home uplink can be the bottleneck in relay mode.</li>
     <li><strong>Transfer stops:</strong> check local sleep settings, VPN disconnects, and network drops.</li>
   </ul>
 
-  <h2>9) Security recommendations</h2>
+  <h2>11) Packaged app crash troubleshooting</h2>
+  <p>
+    If an older packaged app closes unexpectedly during transfer, download the latest
+    release bundle. The current build avoids updating Qt widgets from the worker thread.
+    Startup failures are written to:
+  </p>
+  <pre><code>macOS/Linux: ~/.clusterbridge/logs/startup.log
+Windows:     %USERPROFILE%/.clusterbridge/logs/startup.log</code></pre>
+  <p>
+    A transfer failure is different from a startup failure: transfer errors are shown in the
+    task completion message with the exception type and message.
+  </p>
+
+  <h2>12) Security recommendations</h2>
   <ul>
     <li>Keep SSH host-key verification enabled.</li>
     <li>Use least-privilege accounts for transfer-only workflows.</li>
     <li>Store connection IDs/paths carefully; metadata can also be sensitive.</li>
   </ul>
 
-  <h2>10) Packaging and releases</h2>
+  <h2>13) Packaging and releases</h2>
   <p>
     Standalone bundles for macOS, Windows, and Linux are published in:
     <a href="https://github.com/nkfff/ClusterBridge/releases">ClusterBridge Releases</a>

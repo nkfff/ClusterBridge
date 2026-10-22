@@ -8,7 +8,7 @@ All timestamps use `Asia/Shanghai` (`UTC+08:00`) and are recorded to the second.
 
 | Version | Released at | Highlights |
 |---|---|---|
-| [V1.0.1](https://github.com/nkfff/ClusterBridge/releases/tag/v1.0.1) | 2026-10-22 17:10:50 +08:00 | Fixed standalone app startup, startup diagnostics, and replacement platform bundles |
+| [V1.0.1](https://github.com/nkfff/ClusterBridge/releases/tag/v1.0.1) | 2026-10-22 17:10:50 +08:00 | Fixed app startup and Qt thread crash, added connection manager, icons, and replacement bundles |
 | [V1.0.0](https://github.com/nkfff/ClusterBridge/releases/tag/v1.0.0) | 2026-10-22 16:35:53 +08:00 | Cross-platform packaging workflow, concurrent resumable transfer queue, and release automation |
 | [V0.1.0](https://github.com/nkfff/ClusterBridge/releases/tag/v0.1.0) | 2026-10-22 16:31:42 +08:00 | Initial PySide6 desktop MVP and single-file SSH streaming |
 
@@ -26,6 +26,10 @@ Released at `2026-10-22 17:10:50 +08:00`.
 - Rebuilt and published macOS, Windows, and Linux standalone bundles.
 - Published the detailed [`tutorial.html`](https://github.com/nkfff/ClusterBridge/releases/download/v1.0.1/tutorial.html) guide.
 - Added the in-app SSH connection manager for saved cluster profiles and keychain passwords.
+- Fixed a macOS Qt crash caused by updating the progress bar from the transfer worker thread.
+- Added exception type and message to failed-task status output.
+- Added the glass-flow icon in macOS, Windows, and Linux packaging formats.
+- Documented the current single-file limitation, absolute remote paths, and directory/file path rules.
 
 ### V1.0.0 — Cross-platform desktop release
 
@@ -56,7 +60,7 @@ Released at `2026-10-22 16:31:42 +08:00`.
 
 - Product name: ClusterBridge
 - Current app version: `1.0.1`
-- Last updated: `2026-10-22 17:35:20 +08:00`
+- Last updated: `2026-10-22 18:19:38 +08:00`
 - Maintainer repository: `nkfff/ClusterBridge`
 - Releases page: <https://github.com/nkfff/ClusterBridge/releases>
 - Current fixed release assets: macOS, Windows, Linux, and [`tutorial.html`](https://github.com/nkfff/ClusterBridge/releases/download/v1.0.1/tutorial.html)
@@ -71,6 +75,8 @@ Released at `2026-10-22 16:31:42 +08:00`.
 - Use a configurable 4 MiB default memory buffer
 - Resume a destination file from its existing size
 - Report progress and surface transfer failures
+
+V1.0.1 currently transfers one file per task. A source directory is not recursive input yet; use a complete source filename and a complete destination filename.
 
 The MVP intentionally supports one transfer at a time. Recursive directories, concurrent small-file transfers, ProxyJump, segment-level checksums, and sleep prevention are planned for later releases.
 
@@ -89,12 +95,15 @@ python -m clusterbridge
 
 On first launch, the application creates `~/.clusterbridge/clusterbridge.sqlite3`. The database contains connection metadata only; passwords are stored in the operating system keychain under `clusterbridge/<connection-id>`.
 
+For remote SFTP paths, use absolute paths. `~` is not expanded by SFTP; run `echo "$HOME"` on the cluster and use the returned path.
+
 ## Detailed tutorial
 
 You can open a complete step-by-step guide from:
 
 - In-app button: `Open tutorial`
 - Local file: [`docs/tutorial.html`](/Users/george/ClusterBridge/docs/tutorial.html)
+- Downloadable release copy: [`tutorial.html`](https://github.com/nkfff/ClusterBridge/releases/download/v1.0.1/tutorial.html)
 
 ## Startup troubleshooting for packaged app
 
