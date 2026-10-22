@@ -2,6 +2,15 @@
 
 ClusterBridge is a lightweight SSH data relay desktop application. It connects to a source and a destination at the same time, forwarding data through the local computer in bounded memory instead of storing the complete file on disk.
 
+## Release history
+
+All timestamps use `Asia/Shanghai` (`UTC+08:00`) and are recorded to the second.
+
+| Version | Released at | Highlights |
+|---|---|---|
+| [V1.0.0](https://github.com/nkfff/ClusterBridge/releases/tag/v1.0.0) | 2026-10-22 16:35:00 +08:00 | Cross-platform packaging workflow, concurrent resumable transfer queue, and release automation |
+| [V0.1.0](https://github.com/nkfff/ClusterBridge/releases/tag/v0.1.0) | 2026-10-22 16:31:04 +08:00 | Initial PySide6 desktop MVP and single-file SSH streaming |
+
 ## MVP scope
 
 - Stream a single file between cluster-to-cluster, cluster-to-local, and local-to-cluster endpoints
@@ -12,6 +21,8 @@ ClusterBridge is a lightweight SSH data relay desktop application. It connects t
 - Report progress and surface transfer failures
 
 The MVP intentionally supports one transfer at a time. Recursive directories, concurrent small-file transfers, ProxyJump, segment-level checksums, and sleep prevention are planned for later releases.
+
+V1 adds a bounded-concurrency task queue through `transfer_many()`. Each task remains an independent SFTP stream and resumes from the existing destination size, so a failed task does not restart completed tasks. This is the bridge-safe equivalent of `rsync --partial --relative`: it preserves relative remote paths with `join_remote_path()` without requiring the two clusters to connect to each other.
 
 ## Run from source
 
@@ -43,13 +54,13 @@ The buffer has a fixed capacity and applies backpressure between the reader and 
 
 ## Is this already a desktop app?
 
-It is a runnable desktop application in source form, built with PySide6. It is not yet packaged as a standalone distributable application:
+It is a runnable desktop application in source form, built with PySide6. V1 adds a GitHub Actions packaging workflow which builds standalone bundles on native macOS, Windows, and Linux runners when a `v*` tag is pushed:
 
-- macOS `.app` / `.dmg`: not built yet
-- Windows `.exe`: not built yet
-- Linux AppImage / package: not built yet
+- macOS `.app` archive
+- Windows `.zip` containing the `.exe`
+- Linux `.tar.gz` bundle
 
-Until packaging is added, users need Python and the project dependencies installed. The next release should use PyInstaller to create platform-specific bundles and then test SSH keychain integration on each target operating system.
+The bundles are produced by CI rather than by this macOS development machine. Users of a release asset do not need to install Python or the project dependencies. SSH keychain integration still needs validation on each target operating system.
 
 ## Project structure
 
@@ -62,8 +73,7 @@ Until packaging is added, users need Python and the project dependencies install
 ## Roadmap
 
 1. Connection management dialog for creating, editing, and deleting SSH profiles
-2. Recursive directory transfer with per-file resume
+2. Recursive directory discovery with per-file resume
 3. Segment-level checksums and source-file snapshot validation
-4. Concurrent small-file queue and bandwidth limiting
+4. Bandwidth limiting and task cancellation
 5. ProxyJump, connection testing, and sleep prevention
-6. PyInstaller bundles and macOS, Windows, and Linux release testing

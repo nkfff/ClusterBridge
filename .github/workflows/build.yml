@@ -1,0 +1,51 @@
+name: Build desktop apps
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            artifact: ClusterBridge-macos
+            executable: ClusterBridge
+          - os: windows-2022
+            artifact: ClusterBridge-windows
+            executable: ClusterBridge.exe
+          - os: ubuntu-24.04
+            artifact: ClusterBridge-linux
+            executable: ClusterBridge
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install packaging dependencies
+        run: python -m pip install -e ".[packaging]"
+      - name: Build application bundle
+        run: pyinstaller --noconfirm --clean --windowed --name ClusterBridge clusterbridge/launcher.py
+      - name: Archive macOS bundle
+        if: runner.os == 'macOS'
+        run: ditto -c -k --sequesterRsrc --keepParent dist/ClusterBridge.app ClusterBridge-macos.zip
+      - name: Archive Windows bundle
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path dist/ClusterBridge -DestinationPath ClusterBridge-windows.zip
+      - name: Archive Linux bundle
+        if: runner.os == 'Linux'
+        run: tar -czf ClusterBridge-linux.tar.gz -C dist ClusterBridge
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            ClusterBridge-*.zip
+            ClusterBridge-*.tar.gz

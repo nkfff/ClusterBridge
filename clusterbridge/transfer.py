@@ -1,4 +1,5 @@
 import asyncio
+import posixpath
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -32,6 +33,15 @@ class _AsyncLocalFile:
 class TransferResult:
     bytes_transferred: int
     resumed_from: int
+
+
+@dataclass(frozen=True, slots=True)
+class BatchTransferResult:
+    completed: int
+    failed: int
+    bytes_transferred: int
+    resumed_from: int
+    errors: tuple[str, ...] = ()
 
 
 async def _notify(callback: ProgressCallback | None, current: int, total: int) -> None:
@@ -134,3 +144,51 @@ async def transfer_file(
         if destination_connection:
             destination_connection.close()
             await destination_connection.wait_closed()
+
+
+async def transfer_many(
+    requests: list[TransferRequest],
+    profiles: dict[str, ConnectionProfile],
+    progress: ProgressCallback | None = None,
+    max_concurrency: int = 3,
+) -> BatchTransferResult:
+    """Run an independent, resumable transfer queue with bounded concurrency.
+
+    Each task opens its own source and destination streams, so a failed task
+    can be retried without restarting completed tasks.
+    """
+    if not requests:
+        return BatchTransferResult(0, 0, 0, 0)
+    if not 1 <= max_concurrency <= 16:
+        raise ValueError("max_concurrency must be between 1 and 16")
+
+    semaphore = asyncio.Semaphore(max_concurrency)
+    completed = failed = bytes_transferred = resumed_from = 0
+    errors: list[str] = []
+    lock = asyncio.Lock()
+
+    async def run_one(request: TransferRequest) -> None:
+        nonlocal completed, failed, bytes_transferred, resumed_from
+        async with semaphore:
+            try:
+                result = await transfer_file(request, profiles)
+            except Exception as exc:
+                async with lock:
+                    failed += 1
+                    errors.append(str(exc))
+                return
+            async with lock:
+                completed += 1
+                bytes_transferred += result.bytes_transferred
+                resumed_from += result.resumed_from
+                await _notify(progress, bytes_transferred, 0)
+
+    await asyncio.gather(*(run_one(request) for request in requests))
+    return BatchTransferResult(
+        completed, failed, bytes_transferred, resumed_from, tuple(errors)
+    )
+
+
+def join_remote_path(directory: str, relative_path: str) -> str:
+    """Join a POSIX remote directory without allowing an absolute child path."""
+    return posixpath.join(directory.rstrip("/"), relative_path.lstrip("/"))
