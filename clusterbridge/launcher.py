@@ -1,4 +1,4 @@
-from .ui import main
+from clusterbridge.bootstrap import run
 
 if __name__ == "__main__":
-    main()
+    run()

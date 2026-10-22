@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ClusterBridge Tutorial</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.6; margin: 2rem auto; max-width: 980px; padding: 0 1rem; }
+    h1, h2, h3 { line-height: 1.25; }
+    code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    pre { background: #f4f4f5; padding: 0.8rem; border-radius: 8px; overflow-x: auto; }
+    .tip { background: #ecfeff; border-left: 4px solid #06b6d4; padding: 0.75rem; margin: 0.75rem 0; }
+    .warn { background: #fff7ed; border-left: 4px solid #f97316; padding: 0.75rem; margin: 0.75rem 0; }
+  </style>
+</head>
+<body>
+  <h1>ClusterBridge Detailed Tutorial (V1.0.1)</h1>
+  <p><strong>Last updated:</strong> 2026-10-22 16:51:55 +08:00</p>
+
+  <h2>1) What ClusterBridge does</h2>
+  <p>
+    ClusterBridge bridges files between two SSH endpoints through your local computer.
+    Data is streamed in memory and written to destination directly, without first saving a full copy on local disk.
+  </p>
+
+  <h2>2) Requirements checklist</h2>
+  <ul>
+    <li>Your computer can SSH/SFTP to both endpoints.</li>
+    <li>You have read permission on source path and write permission on destination path.</li>
+    <li>Your computer stays online and does not sleep during transfer.</li>
+    <li>Both clusters allow this relay pattern under their security policies.</li>
+  </ul>
+
+  <h2>3) Install and start</h2>
+  <pre><code>python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+python -m clusterbridge</code></pre>
+
+  <h2>4) Prepare SSH profiles (current V1 behavior)</h2>
+  <p>
+    V1.0.1 does not yet provide an in-app profile editor. Profiles are loaded from SQLite and passwords from your OS keychain.
+    Use this script once to add profiles:
+  </p>
+  <pre><code>python - &lt;&lt;'PY'
+from clusterbridge.models import ConnectionProfile
+from clusterbridge.storage import ProfileStore
+from clusterbridge.secrets import save_password
+
+store = ProfileStore()
+profiles = [
+    ConnectionProfile(
+        id="cluster-a",
+        name="Lab Cluster A",
+        host="10.10.1.20",
+        username="alice",
+        port=22,
+        default_path="/data/users/alice/",
+    ),
+    ConnectionProfile(
+        id="cluster-b",
+        name="Lab Cluster B",
+        host="10.10.2.30",
+        username="alice",
+        port=22,
+        default_path="/scratch/alice/",
+    ),
+]
+for p in profiles:
+    store.save_profile(p)
+
+save_password("cluster-a", "YOUR_PASSWORD_A")
+save_password("cluster-b", "YOUR_PASSWORD_B")
+store.close()
+print("Profiles and keychain passwords saved.")
+PY</code></pre>
+
+  <div class="warn">
+    Never commit plaintext passwords. This script is for local interactive setup only.
+  </div>
+
+  <h2>5) Queue multiple transfer tasks</h2>
+  <ol>
+    <li>Open ClusterBridge.</li>
+    <li>Select <strong>Source</strong> and <strong>Destination</strong> (local or remote profile).</li>
+    <li>Fill <strong>Source path</strong> and <strong>Destination path</strong>.</li>
+    <li>Click <strong>Add task</strong>.</li>
+    <li>Repeat to add more tasks.</li>
+    <li>Click <strong>Start queued tasks</strong>.</li>
+  </ol>
+  <p>
+    Tasks run with bounded concurrency and independent resume behavior.
+    If one task fails, completed tasks remain completed.
+  </p>
+
+  <h2>6) Resume behavior and safe retry</h2>
+  <ul>
+    <li>If destination file already exists and is smaller than source, transfer resumes from destination size.</li>
+    <li>You can rerun failed tasks by re-adding them and starting the queue again.</li>
+    <li>Do not modify source files during active transfers.</li>
+  </ul>
+
+  <h2>7) Typical scenarios</h2>
+  <h3>A. Cluster A → Cluster B</h3>
+  <ul>
+    <li>Source = profile <code>cluster-a</code></li>
+    <li>Destination = profile <code>cluster-b</code></li>
+    <li>Example file: <code>/data/project/sample.h5ad</code> → <code>/scratch/project/sample.h5ad</code></li>
+  </ul>
+
+  <h3>B. Local → Cluster</h3>
+  <ul>
+    <li>Source = <code>This computer</code></li>
+    <li>Destination = remote profile</li>
+  </ul>
+
+  <h3>C. Cluster → Local</h3>
+  <ul>
+    <li>Source = remote profile</li>
+    <li>Destination = <code>This computer</code></li>
+  </ul>
+
+  <h2>8) Troubleshooting</h2>
+  <ul>
+    <li><strong>Auth failed:</strong> verify username/password in keychain and cluster SSH policy.</li>
+    <li><strong>Path not found:</strong> verify source path and destination parent directory permissions.</li>
+    <li><strong>Very slow transfer:</strong> your home uplink can be the bottleneck in relay mode.</li>
+    <li><strong>Transfer stops:</strong> check local sleep settings, VPN disconnects, and network drops.</li>
+  </ul>
+
+  <h2>9) Security recommendations</h2>
+  <ul>
+    <li>Keep SSH host-key verification enabled.</li>
+    <li>Use least-privilege accounts for transfer-only workflows.</li>
+    <li>Store connection IDs/paths carefully; metadata can also be sensitive.</li>
+  </ul>
+
+  <h2>10) Packaging and releases</h2>
+  <p>
+    Standalone bundles for macOS, Windows, and Linux are published in:
+    <a href="https://github.com/nkfff/ClusterBridge/releases">ClusterBridge Releases</a>
+  </p>
+
+  <div class="tip">
+    Next recommended step: add an in-app Connection Manager dialog so profile creation can be done without scripts.
+  </div>
+</body>
+</html>

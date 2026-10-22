@@ -8,9 +8,18 @@ All timestamps use `Asia/Shanghai` (`UTC+08:00`) and are recorded to the second.
 
 | Version | Released at | Highlights |
 |---|---|---|
-| [V1.0.1](https://github.com/nkfff/ClusterBridge/releases/tag/v1.0.1) | 2026-10-22 16:35:00 +08:00 | Desktop task queue wired to concurrent resumable transfers |
-| [V1.0.0](https://github.com/nkfff/ClusterBridge/releases/tag/v1.0.0) | 2026-10-22 16:35:00 +08:00 | Cross-platform packaging workflow, concurrent resumable transfer queue, and release automation |
-| [V0.1.0](https://github.com/nkfff/ClusterBridge/releases/tag/v0.1.0) | 2026-10-22 16:31:04 +08:00 | Initial PySide6 desktop MVP and single-file SSH streaming |
+| [V1.0.1](https://github.com/nkfff/ClusterBridge/releases/tag/v1.0.1) | 2026-10-22 16:38:35 +08:00 | Desktop task queue wired to concurrent resumable transfers |
+| [V1.0.0](https://github.com/nkfff/ClusterBridge/releases/tag/v1.0.0) | 2026-10-22 16:35:53 +08:00 | Cross-platform packaging workflow, concurrent resumable transfer queue, and release automation |
+| [V0.1.0](https://github.com/nkfff/ClusterBridge/releases/tag/v0.1.0) | 2026-10-22 16:31:42 +08:00 | Initial PySide6 desktop MVP and single-file SSH streaming |
+
+## About
+
+- Product name: ClusterBridge
+- Current app version: `1.0.1`
+- Last updated: `2026-10-22 16:51:55 +08:00`
+- Maintainer repository: `nkfff/ClusterBridge`
+- Releases page: <https://github.com/nkfff/ClusterBridge/releases>
+- Core design: stream data through local memory with bounded buffers, no full-file local staging
 
 ## MVP scope
 
@@ -37,6 +46,27 @@ python -m clusterbridge
 ```
 
 On first launch, the application creates `~/.clusterbridge/clusterbridge.sqlite3`. The database contains connection metadata only; passwords are stored in the operating system keychain under `clusterbridge/<connection-id>`.
+
+## Detailed tutorial
+
+You can open a complete step-by-step guide from:
+
+- In-app button: `Open tutorial`
+- Local file: [`docs/tutorial.html`](/Users/george/ClusterBridge/docs/tutorial.html)
+
+## Startup troubleshooting for packaged app
+
+If you double-click the packaged app and no window appears:
+
+1. Check startup diagnostics at:
+   - macOS/Linux: `~/.clusterbridge/logs/startup.log`
+   - Windows: `%USERPROFILE%/.clusterbridge/logs/startup.log`
+2. Verify macOS Gatekeeper did not block launch:
+   - `xattr -dr com.apple.quarantine /Applications/ClusterBridge.app`
+3. Launch from terminal once to capture platform-level errors:
+   - `open /Applications/ClusterBridge.app` (macOS)
+   - `./ClusterBridge` (Linux extracted bundle)
+   - `ClusterBridge.exe` (Windows extracted bundle)
 
 ## Transfer model
 
