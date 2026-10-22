@@ -1,21 +1,170 @@
 import asyncio
 import sys
+import uuid
 from pathlib import Path
 
 from PySide6.QtCore import QObject, QThread, QUrl, Signal
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
-    QApplication, QComboBox, QFormLayout, QLabel, QLineEdit,
+    QApplication, QComboBox, QDialog, QDialogButtonBox, QFormLayout, QLabel,
     QHBoxLayout, QListWidget, QMainWindow, QMessageBox, QPushButton,
-    QProgressBar, QVBoxLayout, QWidget,
+    QProgressBar, QSpinBox, QVBoxLayout, QWidget, QLineEdit,
 )
 
 from . import __version__
-from .models import Endpoint, EndpointKind, TransferRequest
+from .models import ConnectionProfile, Endpoint, EndpointKind, TransferRequest
+from .secrets import delete_password, save_password
 from .storage import ProfileStore
 
 LAST_UPDATED = "2026-10-22T16:51:55+08:00"
 RELEASES_URL = "https://github.com/nkfff/ClusterBridge/releases"
+
+
+class ProfileDialog(QDialog):
+    def __init__(self, profile: ConnectionProfile | None = None, parent=None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Add SSH connection" if profile is None else "Edit SSH connection")
+        self.name = QLineEdit(profile.name if profile else "")
+        self.host = QLineEdit(profile.host if profile else "")
+        self.username = QLineEdit(profile.username if profile else "")
+        self.port = QSpinBox()
+        self.port.setRange(1, 65535)
+        self.port.setValue(profile.port if profile else 22)
+        self.default_path = QLineEdit(profile.default_path if profile else "/")
+        self.password = QLineEdit()
+        self.password.setEchoMode(QLineEdit.Password)
+        self.password.setPlaceholderText(
+            "Leave blank to keep the saved password" if profile else "Required"
+        )
+
+        form = QFormLayout()
+        form.addRow("Connection name", self.name)
+        form.addRow("SSH host", self.host)
+        form.addRow("Username", self.username)
+        form.addRow("Port", self.port)
+        form.addRow("Default path", self.default_path)
+        form.addRow("Password", self.password)
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.Save | QDialogButtonBox.Cancel
+        )
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout = QVBoxLayout(self)
+        layout.addLayout(form)
+        layout.addWidget(QLabel("The password is stored in the system keychain."))
+        layout.addWidget(buttons)
+        self._profile = profile
+
+    def accept(self) -> None:
+        if not all(
+            value.strip()
+            for value in (
+                self.name.text(),
+                self.host.text(),
+                self.username.text(),
+                self.default_path.text(),
+            )
+        ):
+            QMessageBox.warning(self, "Invalid input", "All connection fields are required.")
+            return
+        if self._profile is None and not self.password.text():
+            QMessageBox.warning(self, "Invalid input", "A password is required for a new connection.")
+            return
+        super().accept()
+
+    def profile(self) -> ConnectionProfile:
+        return ConnectionProfile(
+            id=self._profile.id if self._profile else str(uuid.uuid4()),
+            name=self.name.text().strip(),
+            host=self.host.text().strip(),
+            username=self.username.text().strip(),
+            port=self.port.value(),
+            default_path=self.default_path.text().strip(),
+        )
+
+
+class ConnectionManagerDialog(QDialog):
+    profiles_changed = Signal()
+
+    def __init__(self, store: ProfileStore, profiles: dict[str, ConnectionProfile], parent=None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("SSH connection manager")
+        self.resize(500, 320)
+        self.store = store
+        self.profiles = profiles
+        self.list = QListWidget()
+        self.refresh()
+
+        add = QPushButton("Add")
+        edit = QPushButton("Edit")
+        remove = QPushButton("Delete")
+        add.clicked.connect(self.add_profile)
+        edit.clicked.connect(self.edit_profile)
+        remove.clicked.connect(self.delete_profile)
+        buttons = QHBoxLayout()
+        buttons.addWidget(add)
+        buttons.addWidget(edit)
+        buttons.addWidget(remove)
+        buttons.addStretch()
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel("Saved SSH connections"))
+        layout.addWidget(self.list)
+        layout.addLayout(buttons)
+
+    def refresh(self) -> None:
+        self.list.clear()
+        for profile in sorted(self.profiles.values(), key=lambda item: item.name.lower()):
+            self.list.addItem(f"{profile.name} — {profile.username}@{profile.host}:{profile.port}")
+
+    def selected_profile(self) -> ConnectionProfile | None:
+        row = self.list.currentRow()
+        if row < 0:
+            return None
+        profiles = sorted(self.profiles.values(), key=lambda item: item.name.lower())
+        return profiles[row]
+
+    def add_profile(self) -> None:
+        dialog = ProfileDialog(parent=self)
+        if dialog.exec() != QDialog.Accepted:
+            return
+        profile = dialog.profile()
+        self.store.save_profile(profile)
+        save_password(profile.id, dialog.password.text())
+        self.profiles[profile.id] = profile
+        self.refresh()
+        self.profiles_changed.emit()
+
+    def edit_profile(self) -> None:
+        profile = self.selected_profile()
+        if profile is None:
+            QMessageBox.information(self, "Edit connection", "Select a connection first.")
+            return
+        dialog = ProfileDialog(profile, self)
+        if dialog.exec() != QDialog.Accepted:
+            return
+        updated = dialog.profile()
+        self.store.save_profile(updated)
+        if dialog.password.text():
+            save_password(updated.id, dialog.password.text())
+        self.profiles[updated.id] = updated
+        self.refresh()
+        self.profiles_changed.emit()
+
+    def delete_profile(self) -> None:
+        profile = self.selected_profile()
+        if profile is None:
+            QMessageBox.information(self, "Delete connection", "Select a connection first.")
+            return
+        answer = QMessageBox.question(
+            self, "Delete connection", f"Delete saved connection '{profile.name}'?"
+        )
+        if answer != QMessageBox.Yes:
+            return
+        self.store.delete_profile(profile.id)
+        delete_password(profile.id)
+        del self.profiles[profile.id]
+        self.refresh()
+        self.profiles_changed.emit()
 
 
 class TransferWorker(QObject):
@@ -76,10 +225,13 @@ class MainWindow(QMainWindow):
         self.progress = QProgressBar()
         self.task_list = QListWidget()
         help_row = QHBoxLayout()
+        connections_button = QPushButton("Manage SSH connections")
+        connections_button.clicked.connect(self.manage_connections)
         about_button = QPushButton("About")
         about_button.clicked.connect(self.show_about)
         tutorial_button = QPushButton("Open tutorial")
         tutorial_button.clicked.connect(self.open_tutorial)
+        help_row.addWidget(connections_button)
         help_row.addWidget(about_button)
         help_row.addWidget(tutorial_button)
         help_row.addStretch()
@@ -98,6 +250,24 @@ class MainWindow(QMainWindow):
         container = QWidget()
         container.setLayout(layout)
         self.setCentralWidget(container)
+
+    def reload_profiles(self) -> None:
+        self.profiles = {p.id: p for p in self.store.list_profiles()}
+        for combo in (self.source_combo, self.destination_combo):
+            current_id = combo.currentData()
+            combo.clear()
+            combo.addItem("This computer", "")
+            for profile in sorted(
+                self.profiles.values(), key=lambda item: item.name.lower()
+            ):
+                combo.addItem(profile.name, profile.id)
+            index = combo.findData(current_id)
+            combo.setCurrentIndex(index if index >= 0 else 0)
+
+    def manage_connections(self) -> None:
+        dialog = ConnectionManagerDialog(self.store, self.profiles, self)
+        dialog.profiles_changed.connect(self.reload_profiles)
+        dialog.exec()
 
     def _build_request(self) -> TransferRequest:
         source_id = self.source_combo.currentData()

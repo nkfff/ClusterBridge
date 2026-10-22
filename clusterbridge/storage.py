@@ -48,5 +48,11 @@ class ProfileStore:
         )
         self._connection.commit()
 
+    def delete_profile(self, profile_id: str) -> None:
+        self._connection.execute(
+            "DELETE FROM connections WHERE id = ?", (profile_id,)
+        )
+        self._connection.commit()
+
     def close(self) -> None:
         self._connection.close()

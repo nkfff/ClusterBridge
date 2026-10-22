@@ -37,51 +37,24 @@ source .venv/bin/activate
 pip install -e ".[dev]"
 python -m clusterbridge</code></pre>
 
-  <h2>4) Prepare SSH profiles (current V1 behavior)</h2>
+  <h2>4) Add SSH profiles</h2>
+  <ol>
+    <li>Click <strong>Manage SSH connections</strong>.</li>
+    <li>Click <strong>Add</strong>.</li>
+    <li>Enter a connection name, SSH host, username, port, and default path.</li>
+    <li>Enter the SSH password and click <strong>Save</strong>.</li>
+    <li>The profile appears in both the Source and Destination selectors.</li>
+  </ol>
   <p>
-    V1.0.1 does not yet provide an in-app profile editor. Profiles are loaded from SQLite and passwords from your OS keychain.
-    Use this script once to add profiles:
+    Connection metadata is stored in SQLite. Passwords are stored in the operating system keychain,
+    not in the database. Use <strong>Edit</strong> to change metadata or replace a password;
+    leave the password field blank to keep the existing keychain entry.
   </p>
-  <pre><code>python - &lt;&lt;'PY'
-from clusterbridge.models import ConnectionProfile
-from clusterbridge.storage import ProfileStore
-from clusterbridge.secrets import save_password
-
-store = ProfileStore()
-profiles = [
-    ConnectionProfile(
-        id="cluster-a",
-        name="Lab Cluster A",
-        host="10.10.1.20",
-        username="alice",
-        port=22,
-        default_path="/data/users/alice/",
-    ),
-    ConnectionProfile(
-        id="cluster-b",
-        name="Lab Cluster B",
-        host="10.10.2.30",
-        username="alice",
-        port=22,
-        default_path="/scratch/alice/",
-    ),
-]
-for p in profiles:
-    store.save_profile(p)
-
-save_password("cluster-a", "YOUR_PASSWORD_A")
-save_password("cluster-b", "YOUR_PASSWORD_B")
-store.close()
-print("Profiles and keychain passwords saved.")
-PY</code></pre>
-
-  <div class="warn">
-    Never commit plaintext passwords. This script is for local interactive setup only.
-  </div>
 
   <h2>5) Queue multiple transfer tasks</h2>
   <ol>
     <li>Open ClusterBridge.</li>
+    <li>Add your clusters from <strong>Manage SSH connections</strong> if they are not already saved.</li>
     <li>Select <strong>Source</strong> and <strong>Destination</strong> (local or remote profile).</li>
     <li>Fill <strong>Source path</strong> and <strong>Destination path</strong>.</li>
     <li>Click <strong>Add task</strong>.</li>

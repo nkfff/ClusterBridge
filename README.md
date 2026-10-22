@@ -25,6 +25,7 @@ Released at `2026-10-22 17:10:50 +08:00`.
 - Updated PyInstaller collection rules for AsyncSSH and cryptography.
 - Rebuilt and published macOS, Windows, and Linux standalone bundles.
 - Published the detailed [`tutorial.html`](https://github.com/nkfff/ClusterBridge/releases/download/v1.0.1/tutorial.html) guide.
+- Added the in-app SSH connection manager for saved cluster profiles and keychain passwords.
 
 ### V1.0.0 — Cross-platform desktop release
 
@@ -60,6 +61,7 @@ Released at `2026-10-22 16:31:42 +08:00`.
 - Releases page: <https://github.com/nkfff/ClusterBridge/releases>
 - Current fixed release assets: macOS, Windows, Linux, and [`tutorial.html`](https://github.com/nkfff/ClusterBridge/releases/download/v1.0.1/tutorial.html)
 - Core design: stream data through local memory with bounded buffers, no full-file local staging
+- Connection setup: use `Manage SSH connections` in the desktop app to save host, port, username, and keychain password
 
 ## MVP scope
 
