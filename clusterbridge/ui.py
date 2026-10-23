@@ -3,11 +3,11 @@ import sys
 import uuid
 from pathlib import Path
 
-from PySide6.QtCore import QObject, QThread, QUrl, Signal, Slot
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtCore import QObject, QThread, QUrl, Qt, Signal, Slot
+from PySide6.QtGui import QDesktopServices, QIcon, QPixmap
 from PySide6.QtWidgets import (
     QApplication, QComboBox, QDialog, QDialogButtonBox, QFormLayout, QLabel,
-    QHBoxLayout, QListWidget, QMainWindow, QMessageBox, QPushButton,
+    QFrame, QHBoxLayout, QListWidget, QMainWindow, QMessageBox, QPushButton,
     QProgressBar, QSpinBox, QVBoxLayout, QWidget, QLineEdit,
 )
 
@@ -201,8 +201,12 @@ class TransferWorker(QObject):
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("ClusterBridge - Local Relay")
-        self.resize(620, 300)
+        self.setWindowTitle("ClusterBridge")
+        self.setMinimumSize(760, 620)
+        self.resize(860, 700)
+        icon_path = Path(__file__).resolve().parent.parent / "assets" / "clusterbridge.png"
+        if icon_path.exists():
+            self.setWindowIcon(QIcon(str(icon_path)))
         self.store = ProfileStore()
         self.profiles = {p.id: p for p in self.store.list_profiles()}
 
@@ -218,15 +222,31 @@ class MainWindow(QMainWindow):
         self.source_path, self.destination_path = source_path, destination_path
         self.requests = []
 
-        form = QFormLayout()
-        form.addRow("Source", source_combo)
-        form.addRow("Source path", source_path)
-        form.addRow("Destination", destination_combo)
-        form.addRow("Destination path", destination_path)
+        source_card = self._endpoint_card(
+            "SOURCE", "Read from a local file or SSH cluster", source_combo, source_path
+        )
+        destination_card = self._endpoint_card(
+            "DESTINATION", "Write directly without full local staging",
+            destination_combo, destination_path
+        )
+        arrow = QLabel("→")
+        arrow.setObjectName("transferArrow")
+        arrow.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        endpoint_row = QHBoxLayout()
+        endpoint_row.setSpacing(14)
+        endpoint_row.addWidget(source_card, 1)
+        endpoint_row.addWidget(arrow)
+        endpoint_row.addWidget(destination_card, 1)
 
-        self.status = QLabel("Data is relayed through memory and is not stored as a complete local file.")
+        self.status = QLabel("Ready — data is relayed through bounded local memory.")
+        self.status.setObjectName("statusLabel")
         self.progress = QProgressBar()
+        self.progress.setTextVisible(False)
+        self.progress.setFixedHeight(8)
         self.task_list = QListWidget()
+        self.task_list.setObjectName("taskList")
+        task_title = QLabel("TRANSFER QUEUE")
+        task_title.setObjectName("sectionLabel")
         help_row = QHBoxLayout()
         connections_button = QPushButton("Manage SSH connections")
         connections_button.clicked.connect(self.manage_connections)
@@ -238,21 +258,146 @@ class MainWindow(QMainWindow):
         help_row.addWidget(about_button)
         help_row.addWidget(tutorial_button)
         help_row.addStretch()
-        add_task = QPushButton("Add task")
+        brand = QHBoxLayout()
+        logo = QLabel()
+        if icon_path.exists():
+            logo.setPixmap(QPixmap(str(icon_path)).scaled(
+                42, 42, Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            ))
+        brand_text = QVBoxLayout()
+        brand_name = QLabel("ClusterBridge")
+        brand_name.setObjectName("brandName")
+        brand_subtitle = QLabel("Private data relay • local memory bridge")
+        brand_subtitle.setObjectName("brandSubtitle")
+        brand_text.addWidget(brand_name)
+        brand_text.addWidget(brand_subtitle)
+        brand.addWidget(logo)
+        brand.addLayout(brand_text)
+        brand.addStretch()
+        add_task = QPushButton("+  Add task")
+        add_task.setObjectName("secondaryButton")
         add_task.clicked.connect(self.add_task)
-        start = QPushButton("Start queued tasks")
+        start = QPushButton("Start queued transfers")
+        start.setObjectName("primaryButton")
         start.clicked.connect(self.start_transfer)
         layout = QVBoxLayout()
+        layout.setContentsMargins(24, 22, 24, 24)
+        layout.setSpacing(14)
+        layout.addLayout(brand)
         layout.addLayout(help_row)
-        layout.addLayout(form)
+        layout.addLayout(endpoint_row)
+        layout.addWidget(task_title)
         layout.addWidget(add_task)
         layout.addWidget(self.task_list)
         layout.addWidget(self.status)
         layout.addWidget(self.progress)
         layout.addWidget(start)
         container = QWidget()
+        container.setObjectName("root")
         container.setLayout(layout)
         self.setCentralWidget(container)
+        self._apply_theme()
+
+    def _endpoint_card(
+        self, title: str, subtitle: str, combo: QComboBox, path: QLineEdit
+    ) -> QFrame:
+        card = QFrame()
+        card.setObjectName("endpointCard")
+        layout = QVBoxLayout(card)
+        label = QLabel(title)
+        label.setObjectName("cardTitle")
+        hint = QLabel(subtitle)
+        hint.setObjectName("cardHint")
+        path.setPlaceholderText("/absolute/path/to/file")
+        layout.addWidget(label)
+        layout.addWidget(hint)
+        layout.addWidget(combo)
+        layout.addWidget(path)
+        return card
+
+    def _apply_theme(self) -> None:
+        self.setStyleSheet("""
+            QMainWindow, QWidget#root {
+                background: #f5f8ff;
+                color: #172554;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+                font-size: 13px;
+            }
+            QFrame#endpointCard {
+                background: #ffffff;
+                border: 1px solid #dbeafe;
+                border-radius: 18px;
+                padding: 8px;
+            }
+            QLabel#cardTitle, QLabel#sectionLabel {
+                color: #2563eb;
+                font-weight: 700;
+                letter-spacing: 1px;
+            }
+            QLabel#brandName {
+                color: #172554;
+                font-size: 22px;
+                font-weight: 800;
+            }
+            QLabel#brandSubtitle {
+                color: #64748b;
+                font-size: 12px;
+            }
+            QLabel#cardHint, QLabel#statusLabel {
+                color: #64748b;
+            }
+            QLabel#transferArrow {
+                color: #2563eb;
+                font-size: 30px;
+                font-weight: 700;
+                min-width: 34px;
+            }
+            QComboBox, QLineEdit {
+                background: #f8fbff;
+                border: 1px solid #bfdbfe;
+                border-radius: 9px;
+                padding: 8px 10px;
+                color: #172554;
+            }
+            QComboBox:focus, QLineEdit:focus {
+                border: 2px solid #60a5fa;
+            }
+            QPushButton {
+                background: #ffffff;
+                border: 1px solid #bfdbfe;
+                border-radius: 9px;
+                padding: 9px 14px;
+                color: #1d4ed8;
+                font-weight: 600;
+            }
+            QPushButton:hover { background: #eff6ff; }
+            QPushButton#primaryButton {
+                background: #2563eb;
+                color: white;
+                border: none;
+                padding: 13px;
+                font-size: 14px;
+            }
+            QPushButton#primaryButton:hover { background: #1d4ed8; }
+            QPushButton#secondaryButton { background: #eff6ff; }
+            QListWidget#taskList {
+                background: #ffffff;
+                border: 1px solid #dbeafe;
+                border-radius: 12px;
+                padding: 6px;
+                color: #334155;
+            }
+            QProgressBar {
+                background: #dbeafe;
+                border: none;
+                border-radius: 4px;
+            }
+            QProgressBar::chunk {
+                background: #2563eb;
+                border-radius: 4px;
+            }
+        """)
 
     def reload_profiles(self) -> None:
         self.profiles = {p.id: p for p in self.store.list_profiles()}
