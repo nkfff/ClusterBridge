@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ClusterBridge Tutorial</title>
+  <title>ClusterBridge Tutorial - V2.0.0</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.6; margin: 2rem auto; max-width: 980px; padding: 0 1rem; }
     h1, h2, h3 { line-height: 1.25; }
@@ -14,8 +14,8 @@
   </style>
 </head>
 <body>
-  <h1>ClusterBridge Detailed Tutorial (V1.0.1)</h1>
-  <p><strong>Last updated:</strong> 2026-10-22 18:19:38 +08:00</p>
+  <h1>ClusterBridge Detailed Tutorial (V2.0.0)</h1>
+  <p><strong>Last updated:</strong> 2026-10-23 17:18:59 +08:00</p>
 
   <h2>1) What ClusterBridge does</h2>
   <p>
@@ -68,7 +68,7 @@ python -m clusterbridge</code></pre>
 
   <h2>6) Path rules: file versus directory</h2>
   <div class="warn">
-    V1.0.1 transfers one file per task. It does not yet recursively transfer a directory.
+    V2.0.0 transfers one file per task. It does not yet recursively transfer a directory.
   </div>
   <p>For a remote-to-local file transfer, use a complete file path on both sides:</p>
   <pre><code>Source profile:      Lab Cluster A
@@ -128,7 +128,7 @@ echo "$HOME"
     <li><strong>Auth failed:</strong> verify username/password in keychain and cluster SSH policy.</li>
     <li><strong>Path not found:</strong> verify source path and destination parent directory permissions.</li>
     <li><strong>Is a directory:</strong> replace the destination directory with a complete destination filename.</li>
-    <li><strong>Source directory:</strong> select one file for the current V1.0.1 implementation.</li>
+    <li><strong>Source directory:</strong> select one file for the current V2.0.0 implementation.</li>
     <li><strong>Remote path with <code>~</code>:</strong> replace it with the cluster user's absolute home path.</li>
     <li><strong>Task failed count:</strong> the status now includes the exception type and message for each failed task.</li>
     <li><strong>Very slow transfer:</strong> your home uplink can be the bottleneck in relay mode.</li>

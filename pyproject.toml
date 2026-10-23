@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "clusterbridge"
-version = "1.0.0"
+version = "2.0.0"
 description = "Stream SSH data between clusters through a local computer"
 requires-python = ">=3.11"
 dependencies = [
